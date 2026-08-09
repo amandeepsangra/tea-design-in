@@ -1,38 +1,35 @@
-import { BrowserWindow, app } from "electron";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { BrowserWindow as e, app as t, ipcMain as n } from "electron";
+import r from "node:path";
+import { fileURLToPath as i } from "node:url";
 //#region electron/main.ts
-var __dirname = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname, "..");
-var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-var MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-var RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-var win;
-function createWindow() {
-	win = new BrowserWindow({
-		icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
-		webPreferences: { preload: path.join(__dirname, "preload.mjs") },
-		width: 1200,
-		height: 800,
-		titleBarStyle: "hiddenInset",
-		autoHideMenuBar: true
-	});
-	win.webContents.on("did-finish-load", () => {
-		win?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-	});
-	if (VITE_DEV_SERVER_URL) win.loadURL(VITE_DEV_SERVER_URL);
-	else win.loadFile(path.join(RENDERER_DIST, "index.html"));
+var a = r.dirname(i(import.meta.url));
+process.env.APP_ROOT = r.join(a, "..");
+var o = process.env.VITE_DEV_SERVER_URL, s = r.join(process.env.APP_ROOT, "dist-electron"), c = r.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = o ? r.join(process.env.APP_ROOT, "public") : c;
+var l;
+function u() {
+	l = new e({
+		icon: r.join(process.env.VITE_PUBLIC, "logo.png"),
+		webPreferences: { preload: r.join(a, "preload.mjs") },
+		width: 1400,
+		height: 900,
+		minWidth: 900,
+		minHeight: 600,
+		frame: !1,
+		titleBarStyle: "hidden",
+		autoHideMenuBar: !0,
+		title: "Tea Design In",
+		backgroundColor: "#1a1a1a"
+	}), n.on("window:minimize", () => l?.minimize()), n.on("window:maximize", () => {
+		l?.isMaximized() ? l.unmaximize() : l?.maximize();
+	}), n.on("window:close", () => l?.close()), n.handle("window:isMaximized", () => l?.isMaximized()), l.webContents.on("did-finish-load", () => {
+		l?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+	}), o ? l.loadURL(o) : l.loadFile(r.join(c, "index.html"));
 }
-app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") {
-		app.quit();
-		win = null;
-	}
-});
-app.on("activate", () => {
-	if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
-app.whenReady().then(createWindow);
+t.on("window-all-closed", () => {
+	process.platform !== "darwin" && (t.quit(), l = null);
+}), t.on("activate", () => {
+	e.getAllWindows().length === 0 && u();
+}), t.whenReady().then(u);
 //#endregion
-export { MAIN_DIST, RENDERER_DIST, VITE_DEV_SERVER_URL };
+export { s as MAIN_DIST, c as RENDERER_DIST, o as VITE_DEV_SERVER_URL };

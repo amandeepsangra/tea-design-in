@@ -19,3 +19,12 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     return ipcRenderer.invoke(channel, ...omit);
   },
 });
+
+// --------- Expose Window Controls to Renderer ---------
+contextBridge.exposeInMainWorld('electronWindow', {
+  minimize: () => ipcRenderer.send('window:minimize'),
+  maximize: () => ipcRenderer.send('window:maximize'),
+  close: () => ipcRenderer.send('window:close'),
+  isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+});
+

@@ -10,7 +10,33 @@
     "lint": "oxlint",
     "preview": "vite preview"
   },
+  "build": {
+    "appId": "com.teadesignin.app",
+    "productName": "Tea Design In",
+    "directories": {
+      "output": "release"
+    },
+    "fileAssociations": [
+      {
+        "ext": "tea",
+        "name": "Tea Design Document",
+        "description": "Tea Design In Project File",
+        "icon": "public/logo.png",
+        "role": "Editor"
+      }
+    ],
+    "win": {
+      "icon": "public/logo.png"
+    },
+    "mac": {
+      "icon": "public/logo.png"
+    },
+    "linux": {
+      "icon": "public/logo.png"
+    }
+  },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "@types/fabric": "^5.3.11",
     "fabric": "^7.4.0",
     "lucide-react": "^1.30.0",

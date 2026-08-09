@@ -17,6 +17,7 @@ export default defineConfig({
       renderer: {},
     }),
   ],
+  base: '/tea-design-in/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

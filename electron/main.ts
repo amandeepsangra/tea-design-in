@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,15 +17,29 @@ let win: BrowserWindow | null;
 
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.VITE_PUBLIC, 'logo.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
-    width: 1200,
-    height: 800,
-    titleBarStyle: 'hiddenInset', // For a more premium Photoshop-like UI
-    autoHideMenuBar: true
+    width: 1400,
+    height: 900,
+    minWidth: 900,
+    minHeight: 600,
+    frame: false,        // Remove OS title bar completely
+    titleBarStyle: 'hidden',
+    autoHideMenuBar: true,
+    title: 'Tea Design In',
+    backgroundColor: '#1a1a1a',
   });
+
+  // Window control IPC handlers
+  ipcMain.on('window:minimize', () => win?.minimize());
+  ipcMain.on('window:maximize', () => {
+    if (win?.isMaximized()) win.unmaximize();
+    else win?.maximize();
+  });
+  ipcMain.on('window:close', () => win?.close());
+  ipcMain.handle('window:isMaximized', () => win?.isMaximized());
 
   // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {
@@ -53,3 +67,4 @@ app.on('activate', () => {
 });
 
 app.whenReady().then(createWindow);
+
