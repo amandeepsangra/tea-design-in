@@ -486,7 +486,7 @@ function App() {
         <div className="flex items-center h-full" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           {/* Logo */}
           <div className="flex items-center gap-1.5 px-3 h-full border-r border-[#1e1e1e]">
-            <img src="/logo.png" alt="TE" className="h-4 w-4 rounded" />
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="TE" className="h-4 w-4 rounded" />
             <span className="text-[10px] font-bold text-[#555] tracking-widest uppercase">Tea</span>
           </div>
 
@@ -745,7 +745,7 @@ function App() {
           
           {documents.length === 0 ? (
             <div className="m-auto flex flex-col items-center justify-center text-gray-500 bg-[var(--color-panel)] p-12 rounded-lg shadow-2xl border border-[var(--color-panel-border)] transition-transform duration-500 hover:scale-[1.02]">
-              <img src="/logo.png" alt="TE Logo" className="h-24 w-24 mb-6 drop-shadow-[0_0_15px_rgba(0,168,255,0.3)]" />
+              <img src={`${import.meta.env.BASE_URL}logo.png`} alt="TE Logo" className="h-24 w-24 mb-6 drop-shadow-[0_0_15px_rgba(0,168,255,0.3)]" />
               <h1 className="text-2xl text-white font-bold tracking-widest uppercase mb-2">Welcome to Tea Design In</h1>
               <p className="text-gray-400 font-medium tracking-wide mb-8">Start designing beautiful printing templates.</p>
               <div className="flex gap-4">
@@ -825,7 +825,7 @@ function App() {
             <div className="absolute inset-0 rounded-full border-4 border-t-[#0096ff] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
             <div className="absolute inset-2 rounded-full border-2 border-t-transparent border-r-[#7b2ff7]/60 border-b-transparent border-l-transparent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
             <div className="absolute inset-0 flex items-center justify-center">
-              <img src="/logo.png" className="w-8 h-8 rounded opacity-80" />
+              <img src={`${import.meta.env.BASE_URL}logo.png`} className="w-8 h-8 rounded opacity-80" />
             </div>
           </div>
           <div className="text-center">
