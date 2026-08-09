@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import * as fabric from 'fabric';
-import { Layers, Trash2, Eye, EyeOff, Type, Image as ImageIcon, Square, Circle, ChevronDown, Scissors } from 'lucide-react';
+import { Layers, Trash2, Eye, EyeOff, Type, Image as ImageIcon, Square, Circle, ChevronDown, Scissors, Lock, Move, Paintbrush, Grid, LayoutGrid, Copy } from 'lucide-react';
 
 // Google Fonts list (popular ones for design work)
 const GOOGLE_FONTS = [
@@ -41,6 +41,12 @@ export function LayersPanel({ canvas, onAddLayer }: LayersPanelProps) {
   // Layer-level opacity and blend mode (Photoshop-style)
   const [layerOpacity, setLayerOpacity] = useState(100);
   const [layerBlend, setLayerBlend] = useState('source-over');
+  const [layerFill, setLayerFill] = useState(100);
+  const [lockTrans, setLockTrans] = useState(false);
+  const [lockPixels, setLockPixels] = useState(false);
+  const [lockPos, setLockPos] = useState(false);
+  const [lockAll, setLockAll] = useState(false);
+  const [activeTab, setActiveTab] = useState('layers');
 
   // Text properties (shown when text layer selected)
   const [fontFamily, setFontFamily] = useState('Inter');
@@ -66,6 +72,11 @@ export function LayersPanel({ canvas, onAddLayer }: LayersPanelProps) {
       if (obj) {
         setLayerOpacity(Math.round((obj.opacity ?? 1) * 100));
         setLayerBlend((obj as any).globalCompositeOperation || 'source-over');
+        setLayerFill(Math.round(((obj as any).fillOpacity ?? (obj.opacity ?? 1)) * 100));
+        setLockTrans(!!(obj as any).lockTransparency);
+        setLockPixels(!!(obj as any).lockPixels);
+        setLockPos(obj.lockMovementX && obj.lockMovementY);
+        setLockAll(!obj.selectable && !obj.evented);
 
         const type = ((obj as any).type || '').toLowerCase();
         if (type.includes('text')) {
@@ -154,6 +165,20 @@ export function LayersPanel({ canvas, onAddLayer }: LayersPanelProps) {
     }
   };
 
+  const handleDuplicate = async (e: React.MouseEvent, obj: fabric.Object) => {
+    e.stopPropagation();
+    if (!canvas) return;
+    const clone = await obj.clone();
+    clone.set({
+      left: (obj.left || 0) + 10,
+      top: (obj.top || 0) + 10,
+    });
+    canvas.add(clone);
+    canvas.setActiveObject(clone);
+    canvas.requestRenderAll();
+    setObjects([...canvas.getObjects()].reverse());
+  };
+
   const removeBackground = async () => {
     if (!canvas || !activeObj || (activeObj as any).type !== 'image') return;
     setBgRemoving(true);
@@ -226,40 +251,53 @@ export function LayersPanel({ canvas, onAddLayer }: LayersPanelProps) {
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#1e1e1e]">
 
-      {/* ─── LAYERS Header ─── */}
-      <div className="bg-[#1c1c1c] border-b border-[#111] px-2 py-1.5 shrink-0">
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-1 text-[10px] font-bold text-[#666] uppercase tracking-widest">
-            <Layers size={11} />
-            <span>Layers</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button onClick={() => onAddLayer('text')} className="w-5 h-5 flex items-center justify-center rounded bg-[#111] border border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#0096ff] cursor-pointer transition-colors" title="New Text"><Type size={10}/></button>
-            <button onClick={() => onAddLayer('rect')} className="w-5 h-5 flex items-center justify-center rounded bg-[#111] border border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#0096ff] cursor-pointer transition-colors" title="New Shape"><Square size={10}/></button>
-            <button onClick={() => onAddLayer('image')} className="w-5 h-5 flex items-center justify-center rounded bg-[#111] border border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#0096ff] cursor-pointer transition-colors" title="Import Image"><ImageIcon size={10}/></button>
+      {/* ─── TABS Header ─── */}
+      <div className="flex bg-[#252526] text-[11px] text-[#aaa]">
+        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-1.5 text-center cursor-pointer ${activeTab === 'layers' ? 'bg-[#1e1e1e] text-white border-t border-[var(--color-accent)]' : 'hover:bg-[#2a2a2b]'}`}>Layers</button>
+        <button onClick={() => setActiveTab('channels')} className={`flex-1 py-1.5 text-center cursor-pointer ${activeTab === 'channels' ? 'bg-[#1e1e1e] text-white border-t border-[var(--color-accent)]' : 'hover:bg-[#2a2a2b]'}`}>Channels</button>
+        <button onClick={() => setActiveTab('paths')} className={`flex-1 py-1.5 text-center cursor-pointer ${activeTab === 'paths' ? 'bg-[#1e1e1e] text-white border-t border-[var(--color-accent)]' : 'hover:bg-[#2a2a2b]'}`}>Paths</button>
+      </div>
+
+      <div className="bg-[#1c1c1c] border-b border-[#111] px-2 py-1.5 shrink-0 space-y-2">
+        {/* Blend & Opacity */}
+        <div className="flex gap-2 items-center">
+          <select
+            value={layerBlend}
+            disabled={!activeObj}
+            onChange={e => { setLayerBlend(e.target.value); set('globalCompositeOperation', e.target.value); }}
+            className="w-24 bg-[#111] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-[10px] text-white outline-none cursor-pointer focus:border-[#0096ff] capitalize disabled:opacity-50"
+          >
+            {BLEND_MODES.map(m => <option key={m} value={m}>{m.replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
+          </select>
+          <div className="flex-1" />
+          <span className="text-[10px] text-[#888]">Opacity:</span>
+          <div className="flex items-center gap-1 w-12">
+            <input type="number" min="0" max="100" value={layerOpacity} disabled={!activeObj}
+              onChange={e => { const v = Math.max(0, Math.min(100, Number(e.target.value))); setLayerOpacity(v); set('opacity', v / 100); }}
+              className="w-full bg-[#111] border border-[#2a2a2a] rounded px-1 py-0.5 text-[10px] text-white outline-none text-right focus:border-[#0096ff] disabled:opacity-50" />
+            <span className="text-[9px] text-[#555]">%</span>
           </div>
         </div>
 
-        {/* Photoshop-style Opacity + Blend at TOP of layers */}
-        {activeObj && (
-          <div className="space-y-1">
-            <div className="flex gap-1.5 items-center">
-              <select
-                value={layerBlend}
-                onChange={e => { setLayerBlend(e.target.value); set('globalCompositeOperation', e.target.value); }}
-                className="flex-1 bg-[#111] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-[10px] text-white outline-none cursor-pointer focus:border-[#0096ff] capitalize"
-              >
-                {BLEND_MODES.map(m => <option key={m} value={m}>{m.replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
-              </select>
-              <div className="flex items-center gap-1">
-                <span className="text-[9px] text-[#555]">%</span>
-                <input type="number" min="0" max="100" value={layerOpacity}
-                  onChange={e => { const v = Math.max(0, Math.min(100, Number(e.target.value))); setLayerOpacity(v); set('opacity', v / 100); }}
-                  className="w-10 bg-[#111] border border-[#2a2a2a] rounded px-1 py-0.5 text-[10px] text-white outline-none text-center focus:border-[#0096ff]" />
-              </div>
-            </div>
+        {/* Locks & Fill */}
+        <div className="flex gap-2 items-center">
+          <span className="text-[10px] text-[#888]">Lock:</span>
+          <div className="flex gap-0.5">
+            <button disabled={!activeObj} title="Lock transparent pixels" onClick={() => { setLockTrans(!lockTrans); set('lockTransparency', !lockTrans); }} className={`p-0.5 rounded cursor-pointer disabled:opacity-50 ${lockTrans ? 'bg-[#333] text-white' : 'text-[#666] hover:text-[#aaa]'}`}><LayoutGrid size={12}/></button>
+            <button disabled={!activeObj} title="Lock image pixels" onClick={() => { setLockPixels(!lockPixels); set('lockPixels', !lockPixels); }} className={`p-0.5 rounded cursor-pointer disabled:opacity-50 ${lockPixels ? 'bg-[#333] text-white' : 'text-[#666] hover:text-[#aaa]'}`}><Paintbrush size={12}/></button>
+            <button disabled={!activeObj} title="Lock position" onClick={() => { const v = !lockPos; setLockPos(v); set('lockMovementX', v); set('lockMovementY', v); set('lockRotation', v); set('lockScalingX', v); set('lockScalingY', v); }} className={`p-0.5 rounded cursor-pointer disabled:opacity-50 ${lockPos ? 'bg-[#333] text-white' : 'text-[#666] hover:text-[#aaa]'}`}><Move size={12}/></button>
+            <button disabled={!activeObj} title="Lock all" onClick={() => { const v = !lockAll; setLockAll(v); set('selectable', !v); set('evented', !v); }} className={`p-0.5 rounded cursor-pointer disabled:opacity-50 ${lockAll ? 'bg-[#333] text-white' : 'text-[#666] hover:text-[#aaa]'}`}><Lock size={12}/></button>
           </div>
-        )}
+          
+          <div className="flex-1" />
+          <span className="text-[10px] text-[#888]">Fill:</span>
+          <div className="flex items-center gap-1 w-12">
+            <input type="number" min="0" max="100" value={layerFill} disabled={!activeObj}
+              onChange={e => { const v = Math.max(0, Math.min(100, Number(e.target.value))); setLayerFill(v); set('fillOpacity', v / 100); }}
+              className="w-full bg-[#111] border border-[#2a2a2a] rounded px-1 py-0.5 text-[10px] text-white outline-none text-right focus:border-[#0096ff] disabled:opacity-50" />
+            <span className="text-[9px] text-[#555]">%</span>
+          </div>
+        </div>
       </div>
 
       {/* ─── TEXT PROPERTIES (when text selected) ─── */}
@@ -375,7 +413,10 @@ export function LayersPanel({ canvas, onAddLayer }: LayersPanelProps) {
                 <div className="flex items-center gap-0.5 shrink-0">
                   <button onClick={e => moveUp(e, obj)} className="text-[#555] hover:text-white p-0.5 cursor-pointer text-[10px]">↑</button>
                   <button onClick={e => moveDown(e, obj)} className="text-[#555] hover:text-white p-0.5 cursor-pointer text-[10px]">↓</button>
-                  <button onClick={e => handleDelete(e, obj)} className="text-[#c42b1c] hover:text-red-400 p-0.5 ml-0.5 cursor-pointer">
+                  <button onClick={e => handleDuplicate(e, obj)} className="text-[#555] hover:text-white p-0.5 ml-0.5 cursor-pointer" title="Duplicate Layer">
+                    <Copy size={10} />
+                  </button>
+                  <button onClick={e => handleDelete(e, obj)} className="text-[#c42b1c] hover:text-red-400 p-0.5 ml-0.5 cursor-pointer" title="Delete Layer">
                     <Trash2 size={10} />
                   </button>
                 </div>

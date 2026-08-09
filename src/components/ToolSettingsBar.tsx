@@ -100,7 +100,7 @@ export function ToolSettingsBar({ activeTool, canvas }: ToolSettingsBarProps) {
   const flipH = () => { if (!canvas) return; const obj = canvas.getActiveObject(); if (!obj) return; obj.set('flipX', !obj.flipX); canvas.requestRenderAll(); };
   const flipV = () => { if (!canvas) return; const obj = canvas.getActiveObject(); if (!obj) return; obj.set('flipY', !obj.flipY); canvas.requestRenderAll(); };
 
-  const barCls = "h-10 bg-[var(--color-surface)] border-b border-[var(--color-panel-border)] flex items-center px-3 shrink-0 text-sm z-10 gap-3 overflow-x-auto";
+  const barCls = "h-10 bg-[var(--color-surface)] border-b border-[var(--color-panel-border)] flex items-center px-3 shrink-0 text-sm z-10 gap-3 overflow-x-auto scrollbar-hide";
   const Div = () => <div className="w-px h-4 bg-[var(--color-panel-border)] shrink-0" />;
   const Label = ({ t }: { t: string }) => <span className="text-[#666] text-[10px] shrink-0">{t}</span>;
   const colorPicker = (val: string, onChange: (v: string) => void) => (
@@ -252,6 +252,38 @@ export function ToolSettingsBar({ activeTool, canvas }: ToolSettingsBarProps) {
     return (
       <div className={barCls}>
         <span className="text-[#666] text-[10px] italic">Rectangular Marquee Tool — Click & drag to select multiple objects</span>
+      </div>
+    );
+  }
+
+  // ─── BRUSH ───
+  if (activeTool === 'brush') {
+    return (
+      <div className={barCls}>
+        <Label t="Brush Size:" />
+        {numInput(canvas?.freeDrawingBrush?.width || 5, v => {
+           if (canvas && canvas.freeDrawingBrush) {
+             canvas.freeDrawingBrush.width = v;
+             canvas.requestRenderAll();
+           }
+        }, 'w-12', 1, 100)}
+        <Div />
+        <span className="text-[#666] text-[10px] italic">Color is controlled from the bottom left toolbar</span>
+      </div>
+    );
+  }
+
+  // ─── ERASER ───
+  if (activeTool === 'eraser') {
+    return (
+      <div className={barCls}>
+        <Label t="Eraser Size:" />
+        {numInput(canvas?.freeDrawingBrush?.width || 20, v => {
+           if (canvas && canvas.freeDrawingBrush) {
+             canvas.freeDrawingBrush.width = v;
+             canvas.requestRenderAll();
+           }
+        }, 'w-12', 1, 200)}
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as fabric from 'fabric';
-import { MousePointer2, Crop, Image as ImageIcon, Type, Square, Circle, X, Plus, ZoomIn, ZoomOut, PanelRight, Minus, Triangle, Star, Pentagon, Hand, Pipette, SquareDashed } from 'lucide-react';
+import { MousePointer2, Crop, Image as ImageIcon, Type, Square, Circle, X, Plus, ZoomIn, ZoomOut, PanelRight, Minus, Triangle, Star, Pentagon, Hand, Pipette, SquareDashed, CircleDashed, Menu, Layers, SlidersHorizontal, Undo2, Redo2, Download, Paintbrush, Eraser, ArrowUpDown } from 'lucide-react';
 import './index.css';
 import { DropdownMenu } from './components/DropdownMenu';
 import { ToolSettingsBar } from './components/ToolSettingsBar';
@@ -17,19 +17,28 @@ interface DocumentInfo {
   activeMockupId?: string | null;
 }
 
-type ToolType = 'select' | 'marquee' | 'hand' | 'crop' | 'text' | 'rect' | 'circle' | 'line' | 'triangle' | 'star' | 'polygon' | 'image' | 'eyedropper';
+type ToolType = 'select' | 'marquee' | 'hand' | 'crop' | 'text' | 'rect' | 'circle' | 'line' | 'triangle' | 'star' | 'polygon' | 'image' | 'eyedropper' | 'brush' | 'eraser';
 
 function App() {
   const [documents, setDocuments] = useState<DocumentInfo[]>([]);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [showNewDocModal, setShowNewDocModal] = useState(false);
+  const [showCanvasSizeModal, setShowCanvasSizeModal] = useState(false);
+  const [showColorAdjustModal, setShowColorAdjustModal] = useState(false);
+  const [showAIMagicModal, setShowAIMagicModal] = useState(false);
+  const [showAIGenFillModal, setShowAIGenFillModal] = useState(false);
   const [appMode, setAppMode] = useState<'main' | 'mockup'>('main');
   const [activeTool, setActiveTool] = useState<ToolType>('select');
   const [activeShapeGroupTool, setActiveShapeGroupTool] = useState<ToolType>('rect');
   const [showShapeMenu, setShowShapeMenu] = useState(false);
+  const [showMarqueeMenu, setShowMarqueeMenu] = useState(false);
   const [zoomMap, setZoomMap] = useState<{ [id: string]: number }>({});
   const [showRightPanel, setShowRightPanel] = useState(true);
+  const [showMobileRightPanel, setShowMobileRightPanel] = useState(false);
   const [globalLoading, setGlobalLoading] = useState<string | null>(null);
+
+  const [primaryColor, setPrimaryColor] = useState('#000000');
+  const [secondaryColor, setSecondaryColor] = useState('#ffffff');
 
   // We store the actual Fabric instances in a ref map to avoid React state issues with complex objects
   const fabricCanvasesRef = useRef<{ [id: string]: fabric.Canvas }>({});
@@ -470,16 +479,136 @@ function App() {
       canvas.defaultCursor = 'crosshair';
       canvas.hoverCursor = 'crosshair';
       canvas.requestRenderAll();
+    } else if (tool === 'brush' || tool === 'eraser') {
+      canvas.isDrawingMode = true;
+      if (tool === 'eraser' && (fabric as any).EraserBrush) {
+         canvas.freeDrawingBrush = new (fabric as any).EraserBrush(canvas);
+      } else if (!canvas.freeDrawingBrush || canvas.freeDrawingBrush.constructor.name !== 'PencilBrush') {
+         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      }
+      if (tool === 'brush') {
+         canvas.freeDrawingBrush.color = primaryColor;
+         canvas.freeDrawingBrush.width = 5;
+      } else {
+         // Fallback to white if no EraserBrush
+         if (!(fabric as any).EraserBrush) {
+             canvas.freeDrawingBrush.color = '#ffffff';
+         }
+         canvas.freeDrawingBrush.width = 20;
+      }
     }
   };
 
   const activeZoom = activeDocId ? (zoomMap[activeDocId] || 1) : 1;
 
+  const handleRemoveBackground = async () => {
+    const canvas = getActiveCanvas();
+    if (!canvas) return;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj || (activeObj as any).type !== 'image') {
+      alert("Please select an image first to remove its background.");
+      return;
+    }
+    setGlobalLoading('Removing background. This may take a moment...');
+    try {
+      const { removeBackground } = await import('@imgly/background-removal');
+      const imgEl = (activeObj as fabric.Image).getElement() as HTMLImageElement;
+
+      // Convert to blob
+      const c = document.createElement('canvas');
+      c.width = imgEl.naturalWidth || imgEl.width;
+      c.height = imgEl.naturalHeight || imgEl.height;
+      c.getContext('2d')?.drawImage(imgEl, 0, 0);
+      const blob = await new Promise<Blob>((res) => c.toBlob(b => res(b!), 'image/png'));
+
+      const resultBlob = await removeBackground(blob);
+      const url = URL.createObjectURL(resultBlob);
+
+      // Replace image element
+      const newImg = new Image();
+      newImg.onload = () => {
+        const ImgClass = (fabric as any).Image || (fabric as any).FabricImage;
+        const newFimg = new ImgClass(newImg);
+        newFimg.set({
+          left: activeObj.left,
+          top: activeObj.top,
+          scaleX: activeObj.scaleX,
+          scaleY: activeObj.scaleY,
+          angle: activeObj.angle,
+        });
+        canvas.remove(activeObj);
+        canvas.add(newFimg);
+        canvas.setActiveObject(newFimg);
+        canvas.requestRenderAll();
+        setGlobalLoading(null);
+      };
+      newImg.src = url;
+    } catch (err) {
+      console.error('BG removal failed', err);
+      setGlobalLoading(null);
+      alert('Background removal failed. Please try again.');
+    }
+  };
+
+  const handleBlur = () => {
+    const canvas = getActiveCanvas();
+    if (!canvas) return;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj || (activeObj as any).type !== 'image') {
+      alert("Please select an image layer first.");
+      return;
+    }
+    const filter = new (fabric as any).Image.filters.Blur({ blur: 0.1 });
+    (activeObj as any).filters.push(filter);
+    (activeObj as any).applyFilters();
+    canvas.requestRenderAll();
+  };
+
+  const handleSharpen = () => {
+    const canvas = getActiveCanvas();
+    if (!canvas) return;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj || (activeObj as any).type !== 'image') {
+      alert("Please select an image layer first.");
+      return;
+    }
+    const filter = new (fabric as any).Image.filters.Convolute({
+      matrix: [ 0, -1,  0,
+               -1,  5, -1,
+                0, -1,  0 ]
+    });
+    (activeObj as any).filters.push(filter);
+    (activeObj as any).applyFilters();
+    canvas.requestRenderAll();
+  };
+
   return (
     <div className="h-screen w-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden relative">
+      {/* ─── Mobile Header ─── */}
+      <div className="flex md:hidden h-14 bg-[#161616] border-b border-[#0d0d0d] items-center justify-between px-3 shrink-0 z-50">
+        <div className="flex items-center gap-2">
+          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="TE" className="h-6 w-6 rounded" />
+          <div className="flex flex-col">
+            <span className="text-[13px] font-bold text-white tracking-wide">
+              {activeDocId ? (documents.find(d => d.id === activeDocId)?.name || 'Untitled') : 'Tea Design'}
+            </span>
+            {activeDocId && (
+              <span className="text-[10px] text-[#777]">
+                {documents.find(d => d.id === activeDocId)?.width} × {documents.find(d => d.id === activeDocId)?.height} px
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+           <button onClick={handleUndo} className="p-2 text-[#aaa] hover:text-white cursor-pointer"><Undo2 size={20}/></button>
+           <button onClick={handleRedo} className="p-2 text-[#aaa] hover:text-white cursor-pointer"><Redo2 size={20}/></button>
+           <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className={`p-2 cursor-pointer ${showMobileRightPanel ? 'text-[var(--color-accent)]' : 'text-[#aaa] hover:text-white'}`}><Layers size={20}/></button>
+        </div>
+      </div>
+
       {/* ─── Custom Title Bar (Frameless Window) ─── */}
       <div
-        className="h-9 bg-[#161616] border-b border-[#0d0d0d] flex items-center shrink-0 relative z-50 select-none"
+        className="hidden md:flex h-9 bg-[#161616] border-b border-[#0d0d0d] items-center shrink-0 relative z-50 select-none"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         {/* Left: Logo + App Name + Menus — no-drag zone */}
@@ -505,10 +634,23 @@ function App() {
               { label: 'Redo', shortcut: 'Ctrl+Y', onClick: handleRedo }
             ]},
             { title: 'Image', items: [
-              { label: 'Canvas Size...', onClick: () => alert('Coming soon') }
+              { label: 'Canvas Size...', onClick: () => {
+                if (activeDocId) setShowCanvasSizeModal(true);
+                else alert('Please open a document first.');
+              }}
             ]},
             { title: 'Layer', items: [
               { label: 'New Layer', onClick: () => handleToolClick('rect') }
+            ]},
+            { title: 'Filter', items: [
+              { label: 'Blur', onClick: handleBlur },
+              { label: 'Sharpen', onClick: handleSharpen },
+              { label: 'Color Adjust', onClick: () => { if (activeDocId) setShowColorAdjustModal(true); else alert('Open a document first'); } }
+            ]},
+            { title: 'AI', items: [
+              { label: 'Remove Background', onClick: handleRemoveBackground },
+              { label: 'Magic Eraser', onClick: () => { if (activeDocId) setShowAIMagicModal(true); else alert('Open a document first'); } },
+              { label: 'Generative Fill', onClick: () => { if (activeDocId) setShowAIGenFillModal(true); else alert('Open a document first'); } }
             ]}
           ].map(m => (
             <DropdownMenu key={m.title} title={m.title} items={m.items} />
@@ -601,7 +743,7 @@ function App() {
       <ToolSettingsBar activeTool={activeTool} canvas={getActiveCanvas()} />
 
       {/* Tabs Bar */}
-      <div className="h-8 bg-[#1e1e1e] flex items-end px-2 border-b border-[var(--color-panel-border)] shrink-0 z-10 relative">
+      <div className="h-8 bg-[#1e1e1e] flex items-end px-2 border-b border-[var(--color-panel-border)] shrink-0 z-10 relative overflow-x-auto whitespace-nowrap scrollbar-hide">
         {documents.map(doc => (
           <div 
             key={doc.id} 
@@ -621,20 +763,68 @@ function App() {
         </button>
       </div>
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative flex-col-reverse md:flex-row">
         {/* Left Toolbar */}
-        <div className="w-12 bg-[var(--color-panel)] border-r border-[var(--color-panel-border)] flex flex-col items-center py-2 gap-1 shrink-0 z-10 overflow-visible relative">
+        <div className="w-full h-14 md:w-12 md:h-auto bg-[#1a1a1a] md:bg-[var(--color-panel)] border-t md:border-t-0 md:border-r border-[#0d0d0d] md:border-[var(--color-panel-border)] flex flex-row md:flex-col items-center py-0 md:py-2 px-2 md:px-0 gap-2 md:gap-1 shrink-0 z-20 overflow-x-auto md:overflow-visible scrollbar-hide relative justify-start md:justify-start">
           {/* Selection & Navigation */}
           <ToolButton icon={<MousePointer2 size={17} />} active={activeTool === 'select'} onClick={() => { setActiveTool('select'); const c = getActiveCanvas(); if(c){ c.selection = true; c.defaultCursor = 'default'; c.hoverCursor = 'move'; c.requestRenderAll(); }}} tooltip="Move Tool (V)" />
-          <ToolButton icon={<SquareDashed size={17} />} active={activeTool === 'marquee'} onClick={() => handleToolClick('marquee')} tooltip="Rectangular Marquee Tool (M)" />
+          {/* Marquee Group */}
+          <div className="relative group">
+            <button
+              className={`w-9 h-9 flex items-center justify-center rounded cursor-pointer relative ${
+                activeTool === 'marquee'
+                  ? 'bg-[var(--color-accent)] text-white' 
+                  : 'text-[#999] hover:text-white hover:bg-[#333]'
+              }`}
+              onClick={() => handleToolClick('marquee')}
+              onContextMenu={(e) => { e.preventDefault(); setShowMarqueeMenu(!showMarqueeMenu); }}
+              title="Marquee Tool (M) (Right-click to expand)"
+            >
+              <SquareDashed size={17} />
+              <div className="absolute bottom-0.5 right-0.5 pointer-events-none opacity-50" style={{ transform: 'rotate(45deg)' }}>
+                <div className="w-0 h-0 border-l-[3px] border-l-transparent border-t-[3px] border-t-current border-r-[3px] border-r-transparent" />
+              </div>
+            </button>
+
+            {showMarqueeMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMarqueeMenu(false)} onContextMenu={(e) => { e.preventDefault(); setShowMarqueeMenu(false); }} />
+                <div className="absolute bottom-full left-0 mb-2 md:left-full md:bottom-auto md:top-0 md:ml-1 md:mb-0 bg-[#1a1a1a] border border-[#333] rounded-md shadow-xl flex flex-col p-1 z-50 min-w-[150px]">
+                  {[
+                    { id: 'marquee-rect', label: 'Rectangle Select', shortcut: 'M', icon: <SquareDashed size={14} /> },
+                    { id: 'marquee-ellipse', label: 'Ellipse Select', shortcut: 'M', icon: <CircleDashed size={14} /> }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      className={`flex items-center gap-3 px-2 py-1.5 rounded text-xs text-left cursor-pointer transition-colors ${
+                        activeTool === 'marquee' ? 'bg-[#333] text-white' : 'text-[#aaa] hover:bg-[#2a2a2a] hover:text-white'
+                      }`}
+                      onClick={() => {
+                        handleToolClick('marquee');
+                        setShowMarqueeMenu(false);
+                      }}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-3">
+                           {m.icon}
+                           <span>{m.label}</span>
+                        </div>
+                        <span className="text-[10px] text-[#555]">{m.shortcut}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <ToolButton icon={<Hand size={17} />} active={activeTool === 'hand'} onClick={() => handleToolClick('hand')} tooltip="Hand / Pan Tool (H)" />
           <ToolButton icon={<Crop size={17} />} active={activeTool === 'crop'} onClick={() => handleToolClick('crop')} tooltip="Crop Tool (C)" />
           <ToolButton icon={<Pipette size={17} />} active={activeTool === 'eyedropper'} onClick={() => handleToolClick('eyedropper')} tooltip="Eyedropper / Color Picker (I)" />
-          <div className="h-px w-8 bg-[var(--color-panel-border)] my-0.5" />
+          <div className="w-px h-8 md:h-px md:w-8 bg-[#333] md:bg-[var(--color-panel-border)] mx-1 md:mx-0 md:my-0.5 shrink-0" />
           
           {/* Text */}
           <ToolButton icon={<Type size={17} />} active={activeTool === 'text'} onClick={() => handleToolClick('text')} tooltip="Text Tool (T)" />
-          <div className="h-px w-8 bg-[var(--color-panel-border)] my-0.5" />
+          <div className="w-px h-8 md:h-px md:w-8 bg-[#333] md:bg-[var(--color-panel-border)] mx-1 md:mx-0 md:my-0.5 shrink-0" />
           
           {/* Shapes Group */}
           <div className="relative group">
@@ -663,7 +853,7 @@ function App() {
             {showShapeMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowShapeMenu(false)} onContextMenu={(e) => { e.preventDefault(); setShowShapeMenu(false); }} />
-                <div className="absolute left-full top-0 ml-1 bg-[#1a1a1a] border border-[#333] rounded-md shadow-xl flex flex-col p-1 z-50 min-w-[140px]">
+                <div className="absolute bottom-full left-0 mb-2 md:left-full md:bottom-auto md:top-0 md:ml-1 md:mb-0 bg-[#1a1a1a] border border-[#333] rounded-md shadow-xl flex flex-col p-1 z-50 min-w-[140px]">
                   {[
                     { id: 'rect', label: 'Rectangle', icon: <Square size={14} /> },
                     { id: 'circle', label: 'Ellipse', icon: <Circle size={14} /> },
@@ -692,10 +882,47 @@ function App() {
             )}
           </div>
           
-          <div className="h-px w-8 bg-[var(--color-panel-border)] my-0.5" />
+          <div className="w-px h-8 md:h-px md:w-8 bg-[#333] md:bg-[var(--color-panel-border)] mx-1 md:mx-0 md:my-0.5 shrink-0" />
+          
+          {/* Drawing */}
+          <ToolButton icon={<Paintbrush size={17} />} active={activeTool === 'brush'} onClick={() => handleToolClick('brush')} tooltip="Brush Tool (B)" />
+          <ToolButton icon={<Eraser size={17} />} active={activeTool === 'eraser'} onClick={() => handleToolClick('eraser')} tooltip="Eraser Tool (E)" />
+
+          <div className="w-px h-8 md:h-px md:w-8 bg-[#333] md:bg-[var(--color-panel-border)] mx-1 md:mx-0 md:my-0.5 shrink-0" />
           
           {/* Media */}
           <ToolButton icon={<ImageIcon size={17} />} onClick={() => handleToolClick('image')} tooltip="Import Image" />
+
+          {/* Spacer to push colors to bottom on desktop */}
+          <div className="hidden md:block flex-1" />
+
+          {/* Colors */}
+          <div className="flex md:flex-col items-center gap-1 mt-0 md:mt-2 px-1">
+             <div className="relative w-6 h-6 md:w-7 md:h-7 shrink-0 group">
+                <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full" title="Set Background Color" />
+                <div className="absolute right-0 bottom-0 w-4 h-4 md:w-5 md:h-5 rounded border border-[#555] shadow-sm z-0 pointer-events-none" style={{ backgroundColor: secondaryColor }} />
+                
+                <input type="color" value={primaryColor} onChange={(e) => {
+                    setPrimaryColor(e.target.value);
+                    const canvas = getActiveCanvas();
+                    if (canvas && canvas.freeDrawingBrush && activeTool === 'brush') {
+                        canvas.freeDrawingBrush.color = e.target.value;
+                    }
+                }} className="absolute inset-0 opacity-0 cursor-pointer z-20 w-3/4 h-3/4" title="Set Foreground Color" />
+                <div className="absolute left-0 top-0 w-4 h-4 md:w-5 md:h-5 rounded border border-[#fff] shadow-sm z-10 pointer-events-none" style={{ backgroundColor: primaryColor }} />
+             </div>
+             <button onClick={() => {
+                const temp = primaryColor;
+                setPrimaryColor(secondaryColor);
+                setSecondaryColor(temp);
+                const canvas = getActiveCanvas();
+                if (canvas && canvas.freeDrawingBrush && activeTool === 'brush') {
+                    canvas.freeDrawingBrush.color = secondaryColor;
+                }
+             }} className="p-0.5 text-[#666] hover:text-white cursor-pointer" title="Swap Colors (X)">
+                <ArrowUpDown size={12} />
+             </button>
+          </div>
         </div>
 
         {/* Main Canvas Area */}
@@ -776,36 +1003,43 @@ function App() {
         </div>
 
         {/* Right Panel (Layers & Properties or Mockup Preview) */}
-        {showRightPanel && (
-          appMode === 'main' ? (
-            <div className="w-64 bg-[var(--color-panel)] border-l border-[var(--color-panel-border)] flex flex-col shrink-0 z-10">
-              {/* Properties Panel */}
-              <PropertiesPanel canvas={getActiveCanvas()} />
-
-              {/* Layers Panel */}
-              <LayersPanel canvas={getActiveCanvas()} onAddLayer={handleToolClick} />
+        <div className={`${showMobileRightPanel ? 'fixed inset-0 z-50 flex flex-col bg-black/60 pt-14 backdrop-blur-sm' : 'hidden md:flex'} ${!showRightPanel ? 'md:hidden' : ''} md:relative md:inset-auto md:bg-transparent md:pt-0`}>
+          <div className="flex-1 flex flex-col overflow-hidden bg-[var(--color-panel)] rounded-t-xl md:rounded-none w-full md:w-64 border-t md:border-t-0 md:border-l border-[var(--color-panel-border)] shadow-2xl md:shadow-none animate-in slide-in-from-bottom md:slide-in-from-right">
+            {/* Mobile Header for Right Panel */}
+            <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-[var(--color-panel-border)]">
+               <span className="font-semibold text-white">{appMode === 'main' ? 'Layers & Properties' : 'Mockup Workspace'}</span>
+               <button onClick={() => setShowMobileRightPanel(false)} className="p-1 text-gray-400 hover:text-white cursor-pointer"><X size={20}/></button>
             </div>
-          ) : (
-            <div className="w-[450px] bg-[#181818] border-l border-[#222] flex flex-col shrink-0 z-10">
-              {activeDocId && (
-                <MockupWorkspace 
-                  canvas={getActiveCanvas()} 
-                  mockups={documents.find(d => d.id === activeDocId)?.mockups || []}
-                  activeMockupId={documents.find(d => d.id === activeDocId)?.activeMockupId || null}
-                  onChange={(mockups, activeMockupId) => updateDocumentMockups(activeDocId, mockups, activeMockupId)}
-                />
-              )}
-            </div>
-          )
-        )}
+            
+            {appMode === 'main' ? (
+              <div className="flex-1 overflow-y-auto flex flex-col">
+                <PropertiesPanel canvas={getActiveCanvas()} />
+                <LayersPanel canvas={getActiveCanvas()} onAddLayer={handleToolClick} />
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto w-full md:w-[450px]">
+                {activeDocId && (
+                  <MockupWorkspace 
+                    canvas={getActiveCanvas()} 
+                    mockups={documents.find(d => d.id === activeDocId)?.mockups || []}
+                    activeMockupId={documents.find(d => d.id === activeDocId)?.activeMockupId || null}
+                    onChange={(mockups, activeMockupId) => updateDocumentMockups(activeDocId, mockups, activeMockupId)}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ─── Status Bar (Photoshop style) ─── */}
-      <StatusBar
-        canvas={getActiveCanvas()}
-        activeDoc={documents.find(d => d.id === activeDocId) || null}
-        zoom={activeZoom}
-      />
+      <div className="hidden md:block">
+        <StatusBar
+          canvas={getActiveCanvas()}
+          activeDoc={documents.find(d => d.id === activeDocId) || null}
+          zoom={activeZoom}
+        />
+      </div>
 
       {/* New Document Modal */}
       {showNewDocModal && (
@@ -815,6 +1049,56 @@ function App() {
         />
       )}
 
+      {/* Canvas Size Modal */}
+      {showCanvasSizeModal && (
+        <CanvasSizeModal 
+          onClose={() => setShowCanvasSizeModal(false)}
+          onResize={(newW, newH) => {
+             if (activeDocId) {
+                setDocuments(docs => docs.map(d => d.id === activeDocId ? { ...d, width: newW, height: newH } : d));
+                const canvas = fabricCanvasesRef.current[activeDocId];
+                if (canvas) {
+                   canvas.setWidth(newW);
+                   canvas.setHeight(newH);
+                   
+                   // Update clip path (which acts as the document boundary)
+                   if (canvas.clipPath) {
+                       const rect = canvas.clipPath as fabric.Rect;
+                       rect.set({ width: newW, height: newH, left: newW/2, top: newH/2 });
+                       canvas.clipPath = rect;
+                   }
+
+                   // Update background rect if it exists
+                   const bgRect = canvas.getObjects().find(o => (o as any).id === 'bg-rect');
+                   if (bgRect) {
+                       bgRect.set({ width: newW, height: newH });
+                   }
+
+                   canvas.renderAll();
+                }
+                setShowCanvasSizeModal(false);
+             }
+          }}
+          initialWidth={documents.find(d => d.id === activeDocId)?.width || 1920}
+          initialHeight={documents.find(d => d.id === activeDocId)?.height || 1080}
+        />
+      )}
+
+      {/* Color Adjust Modal */}
+      {showColorAdjustModal && (
+        <ColorAdjustModal 
+          onClose={() => setShowColorAdjustModal(false)}
+          canvas={activeDocId ? fabricCanvasesRef.current[activeDocId] : null}
+        />
+      )}
+
+      {/* AI Modals */}
+      {showAIMagicModal && (
+        <MockAIModal title="Magic Eraser (AI)" action="Removing objects..." onClose={() => setShowAIMagicModal(false)} />
+      )}
+      {showAIGenFillModal && (
+        <MockAIModal title="Generative Fill (AI)" action="Generating content..." onClose={() => setShowAIGenFillModal(false)} />
+      )}
 
       {/* ─── Global Loading Overlay ─── */}
       {globalLoading && (
@@ -1108,6 +1392,88 @@ function StatusBar({ canvas, activeDoc, zoom }: {
           </>
         ) : null}
         <Item label="Zoom:" value={`${Math.round(zoom * 100)}%`} />
+      </div>
+    </div>
+  );
+}
+function ColorAdjustModal({ onClose, canvas }: { onClose: () => void, canvas: fabric.Canvas | null }) {
+  const [brightness, setBrightness] = useState(0);
+  const [contrast, setContrast] = useState(0);
+  const [saturation, setSaturation] = useState(0);
+
+  const applyFilters = () => {
+    if (!canvas) return;
+    const obj = canvas.getActiveObject();
+    if (!obj || (obj as any).type !== 'image') return;
+    
+    // Reset filters and apply new ones
+    (obj as any).filters = [];
+    if (brightness !== 0) (obj as any).filters.push(new (fabric as any).Image.filters.Brightness({ brightness }));
+    if (contrast !== 0) (obj as any).filters.push(new (fabric as any).Image.filters.Contrast({ contrast }));
+    if (saturation !== 0) (obj as any).filters.push(new (fabric as any).Image.filters.Saturation({ saturation }));
+    
+    (obj as any).applyFilters();
+    canvas.requestRenderAll();
+  };
+
+  return (
+    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-[100] backdrop-blur-sm">
+      <div className="bg-[#2c2c2c] p-5 rounded-lg w-80 shadow-2xl border border-[#444] text-white">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-semibold text-sm">Color Adjust</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white cursor-pointer"><X size={16} /></button>
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between text-xs mb-1"><span>Brightness</span><span>{Math.round(brightness * 100)}</span></div>
+            <input type="range" min="-1" max="1" step="0.05" value={brightness} onChange={e => { setBrightness(Number(e.target.value)); applyFilters(); }} className="w-full cursor-pointer" />
+          </div>
+          <div>
+            <div className="flex justify-between text-xs mb-1"><span>Contrast</span><span>{Math.round(contrast * 100)}</span></div>
+            <input type="range" min="-1" max="1" step="0.05" value={contrast} onChange={e => { setContrast(Number(e.target.value)); applyFilters(); }} className="w-full cursor-pointer" />
+          </div>
+          <div>
+            <div className="flex justify-between text-xs mb-1"><span>Saturation</span><span>{Math.round(saturation * 100)}</span></div>
+            <input type="range" min="-1" max="1" step="0.05" value={saturation} onChange={e => { setSaturation(Number(e.target.value)); applyFilters(); }} className="w-full cursor-pointer" />
+          </div>
+        </div>
+        
+        <button onClick={onClose} className="w-full mt-5 py-2 bg-[var(--color-accent)] hover:bg-[#0088e6] text-white rounded text-xs font-medium cursor-pointer">Done</button>
+      </div>
+    </div>
+  );
+}
+
+function MockAIModal({ title, action, onClose }: { title: string, action: string, onClose: () => void }) {
+  const [stage, setStage] = useState(0);
+  
+  useEffect(() => {
+    const t = setTimeout(() => setStage(1), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-[100] backdrop-blur-sm">
+      <div className="bg-[#2c2c2c] p-6 rounded-lg w-80 shadow-2xl border border-[#444] text-white text-center">
+        {stage === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-4">
+            <div className="w-10 h-10 border-4 border-[#0096ff]/20 border-t-[#0096ff] rounded-full animate-spin" />
+            <div>
+              <p className="font-semibold text-sm">{title}</p>
+              <p className="text-xs text-gray-400 mt-1">{action}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-4 py-2">
+            <div className="w-12 h-12 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center mb-2">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <p className="font-semibold text-sm">Action Complete!</p>
+            <p className="text-xs text-gray-400">Note: True Generative AI features require a server or API key to run locally. This is a mockup of the workflow.</p>
+            <button onClick={onClose} className="w-full mt-3 py-2 bg-[var(--color-accent)] hover:bg-[#0088e6] text-white rounded text-xs font-medium cursor-pointer">Close</button>
+          </div>
+        )}
       </div>
     </div>
   );
