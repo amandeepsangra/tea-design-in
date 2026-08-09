@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Package, Download, Image as ImageIcon, Upload, Plus, Trash2 } from 'lucide-react';
-import * as fabric from 'fabric';
+
 
 interface MockupWorkspaceProps {
   canvas: any;

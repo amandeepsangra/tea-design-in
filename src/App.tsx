@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as fabric from 'fabric';
-import { MousePointer2, Crop, Image as ImageIcon, Type, Layers, Square, Circle, X, Plus, ZoomIn, ZoomOut, PanelRight, Minus, Triangle, Star, Pentagon, Hand, Pipette, FlipHorizontal, FlipVertical, SquareDashed, ChevronRight } from 'lucide-react';
+import { MousePointer2, Crop, Image as ImageIcon, Type, Square, Circle, X, Plus, ZoomIn, ZoomOut, PanelRight, Minus, Triangle, Star, Pentagon, Hand, Pipette, SquareDashed } from 'lucide-react';
 import './index.css';
 import { DropdownMenu } from './components/DropdownMenu';
 import { ToolSettingsBar } from './components/ToolSettingsBar';
@@ -344,7 +344,8 @@ function App() {
     canvas.setZoom(1);
     const dataURL = canvas.toDataURL({
       format: format,
-      quality: 1
+      quality: 1,
+      multiplier: 1
     });
     canvas.setZoom(oldZoom);
     const link = document.createElement('a');
@@ -358,7 +359,7 @@ function App() {
     setActiveTool(tool);
     const canvas = getActiveCanvas();
     if (!canvas) return;
-    const zoom = activeDocId ? (zoomMap[activeDocId] || 1) : 1;
+
     const doc = documents.find(d => d.id === activeDocId);
     const docW = doc?.width || 800;
     const docH = doc?.height || 800;

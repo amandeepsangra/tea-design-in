@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as fabric from 'fabric';
 import { FlipHorizontal2, FlipVertical2, AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
 
@@ -37,7 +37,7 @@ export function ToolSettingsBar({ activeTool, canvas }: ToolSettingsBarProps) {
   const [objW, setObjW] = useState(0);
   const [objH, setObjH] = useState(0);
   const [objAngle, setObjAngle] = useState(0);
-  const [lockAspect, setLockAspect] = useState(false);
+
 
   useEffect(() => {
     if (!canvas) return;
