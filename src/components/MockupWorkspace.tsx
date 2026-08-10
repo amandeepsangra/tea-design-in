@@ -88,7 +88,7 @@ export function MockupWorkspace({ canvas, mockups, activeMockupId, onChange }: M
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#181818] overflow-hidden relative border-l border-[#222]">
+    <div className="flex-1 flex flex-col h-full bg-[var(--bg-3)] overflow-hidden relative border-l border-[var(--bg-5)]">
       {/* Hidden Global File Input */}
       <input 
         type="file" 
@@ -100,7 +100,7 @@ export function MockupWorkspace({ canvas, mockups, activeMockupId, onChange }: M
       />
 
       {/* Header */}
-      <div className="h-10 border-b border-[#222] bg-[#1a1a1a] flex items-center px-4 shrink-0 justify-between">
+      <div className="h-10 border-b border-[var(--bg-5)] bg-[var(--bg-3)] flex items-center px-4 shrink-0 justify-between">
         <span className="text-sm font-medium text-white flex items-center gap-2">
           <Package size={14} className="text-[var(--color-accent)]" />
           Live Mockup Studio ({mockups.length}/{MAX_MOCKUPS})
@@ -114,27 +114,27 @@ export function MockupWorkspace({ canvas, mockups, activeMockupId, onChange }: M
       </div>
 
       {/* Main Focused Preview Area */}
-      <div className="flex-1 flex items-center justify-center p-4 relative overflow-hidden bg-[#111]">
+      <div className="flex-1 flex items-center justify-center p-4 relative overflow-hidden bg-[var(--bg-1)]">
         {!activeMockup ? (
           <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-[#222] border border-[#333] rounded-full flex items-center justify-center mb-4">
-              <ImageIcon size={24} className="text-[#555]" />
+            <div className="w-16 h-16 bg-[var(--bg-5)] border border-[var(--bg-8)] rounded-full flex items-center justify-center mb-4">
+              <ImageIcon size={24} className="text-[var(--text-6)]" />
             </div>
             <h3 className="text-white font-medium mb-2">No Mockups Linked</h3>
-            <p className="text-[#888] text-xs mb-6 max-w-[250px]">
+            <p className="text-[var(--text-3)] text-xs mb-6 max-w-[250px]">
               Upload up to 8 transparent mockup templates to preview your design.
             </p>
             <button 
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 bg-[#2a2a2a] hover:bg-[#333] border border-[#444] text-white px-4 py-2 rounded text-sm transition-colors cursor-pointer"
+              className="flex items-center gap-2 bg-[var(--bg-7)] hover:bg-[var(--bg-8)] border border-[var(--bg-9)] text-white px-4 py-2 rounded text-sm transition-colors cursor-pointer"
             >
               <Upload size={16} />
               Upload Templates
             </button>
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center relative rounded-lg border border-[#333] overflow-hidden bg-[#151515] shadow-inner group">
-            <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-[#0096ff] border border-[#0096ff]/30 z-20 backdrop-blur">
+          <div className="w-full h-full flex items-center justify-center relative rounded-lg border border-[var(--bg-8)] overflow-hidden bg-[var(--bg-2)] shadow-inner group">
+            <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-[var(--color-accent)] border border-[var(--color-accent)]/30 z-20 backdrop-blur">
               SYNC ACTIVE
             </div>
             
@@ -177,13 +177,13 @@ export function MockupWorkspace({ canvas, mockups, activeMockupId, onChange }: M
       </div>
 
       {/* Bottom Gallery Strip */}
-      <div className="h-28 border-t border-[#222] bg-[#1a1a1a] p-2 flex gap-2 overflow-x-auto items-center shrink-0">
+      <div className="h-28 border-t border-[var(--bg-5)] bg-[var(--bg-3)] p-2 flex gap-2 overflow-x-auto items-center shrink-0">
         {mockups.map((mockup, index) => (
           <div 
             key={mockup.id} 
             onClick={() => onChange(mockups, mockup.id)}
-            className={`w-20 h-20 shrink-0 rounded bg-[#111] border-2 cursor-pointer relative group overflow-hidden ${
-              activeMockupId === mockup.id ? 'border-[var(--color-accent)]' : 'border-[#333] hover:border-[#555]'
+            className={`w-20 h-20 shrink-0 rounded bg-[var(--bg-1)] border-2 cursor-pointer relative group overflow-hidden ${
+              activeMockupId === mockup.id ? 'border-[var(--color-accent)]' : 'border-[var(--bg-8)] hover:border-[var(--text-6)]'
             }`}
           >
             {/* Small composited thumbnail */}
@@ -196,7 +196,7 @@ export function MockupWorkspace({ canvas, mockups, activeMockupId, onChange }: M
             
             <button 
               onClick={(e) => removeMockup(mockup.id, e)}
-              className="absolute top-1 right-1 bg-black/70 hover:bg-[#c42b1c] text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-30 cursor-pointer"
+              className="absolute top-1 right-1 bg-black/70 hover:bg-[var(--color-danger)] text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-30 cursor-pointer"
             >
               <Trash2 size={10} />
             </button>
@@ -211,7 +211,7 @@ export function MockupWorkspace({ canvas, mockups, activeMockupId, onChange }: M
           <div 
             key={`empty_${i}`}
             onClick={() => fileInputRef.current?.click()}
-            className="w-20 h-20 shrink-0 rounded border-2 border-dashed border-[#333] hover:border-[#555] bg-[#1a1a1a] hover:bg-[#222] cursor-pointer flex flex-col items-center justify-center text-[#555] hover:text-[#888] transition-colors relative"
+            className="w-20 h-20 shrink-0 rounded border-2 border-dashed border-[var(--bg-8)] hover:border-[var(--text-6)] bg-[var(--bg-3)] hover:bg-[var(--bg-5)] cursor-pointer flex flex-col items-center justify-center text-[var(--text-6)] hover:text-[var(--text-3)] transition-colors relative"
           >
             <Plus size={16} className="mb-1" />
             <span className="text-[9px]">Add Mockup</span>

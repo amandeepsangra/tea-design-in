@@ -1,7 +1,7 @@
 {
   "name": "tea-design-in",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.20.0",
   "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {

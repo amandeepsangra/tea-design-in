@@ -26,5 +26,23 @@ contextBridge.exposeInMainWorld('electronWindow', {
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+
+  // Unsaved-changes guard: main.ts intercepts the OS close request and asks first.
+  onBeforeClose: (cb: () => void) => {
+    const listener = () => cb();
+    ipcRenderer.on('app:before-close', listener);
+    return listener;
+  },
+  offBeforeClose: (listener: (...args: unknown[]) => void) => ipcRenderer.off('app:before-close', listener),
+  confirmClose: () => ipcRenderer.send('app:confirm-close'),
+
+  // .tea file-association: main.ts sends { name, content } once it has read the
+  // double-clicked/second-instance file off disk.
+  onOpenFile: (cb: (payload: { name: string; content: string }) => void) => {
+    const listener = (_event: unknown, payload: { name: string; content: string }) => cb(payload);
+    ipcRenderer.on('file:open-path', listener);
+    return listener;
+  },
+  offOpenFile: (listener: (...args: unknown[]) => void) => ipcRenderer.off('file:open-path', listener),
 });
 
