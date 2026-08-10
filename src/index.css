@@ -2,16 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme tokens
+ * ────────────
+ * Tea Design In was built dark-first with the UI's near-black elevation shades and text
+ * grays hardcoded directly as Tailwind arbitrary values (bg-[#1a1a1a] etc.) throughout
+ * the app. This block is the source of truth those values were consolidated into: a
+ * ~10-step background "elevation" scale (--bg-0 deepest recess … --bg-9 lightest
+ * border/hover) plus a 7-step text-gray scale, each with a dark value (identical to what
+ * the app already looked like) and a light value. `:root` holds the dark values as the
+ * default (unchanged look for existing users); `prefers-color-scheme` and the explicit
+ * `data-theme` attribute (set by the toggle in the title bar, see App.tsx) layer the
+ * light palette on top.
+ *
+ * Canvas *content* defaults (default shape fill colors, brush black/white, etc.) are
+ * deliberately NOT tokenized here — those are document content, not UI chrome, and must
+ * stay constant regardless of which theme is editing them.
+ */
 :root {
+  color-scheme: dark;
+
   --color-primary: #3b82f6;
   --color-primary-foreground: #ffffff;
-  --color-background: #1e1e1e;
+  --color-accent: #0096ff;
+  --color-accent-hover: #0088e6;
+  --color-danger: #c42b1c;
+  --color-danger-hover: #a82417;
+
   --color-foreground: #e4e4e7;
-  --color-panel: #252526;
-  --color-panel-border: #333333;
-  --color-surface: #2d2d2d;
-  --color-surface-hover: #3d3d3d;
-  --color-accent: #007acc;
+
+  /* Back-compat aliases used by a handful of existing components */
+  --color-background: var(--bg-4);
+  --color-panel: var(--bg-6);
+  --color-panel-border: var(--bg-8);
+  --color-surface: var(--bg-6);
+  --color-surface-hover: var(--bg-8);
+
+  /* Background elevation scale */
+  --bg-0: #0d0d0d;
+  --bg-1: #111111;
+  --bg-2: #151515;
+  --bg-3: #1a1a1a;
+  --bg-4: #1e1e1e;
+  --bg-5: #222222;
+  --bg-6: #252526;
+  --bg-7: #2a2a2a;
+  --bg-8: #333333;
+  --bg-9: #444444;
+
+  /* Text-gray scale, lightest (most prominent on dark bg) to dimmest */
+  --text-1: #aaaaaa;
+  --text-2: #999999;
+  --text-3: #888888;
+  --text-4: #777777;
+  --text-5: #666666;
+  --text-6: #555555;
+  --text-7: #3a3a3a;
+}
+
+/* Explicit light mode (data-theme="light" wins over system preference) */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --color-foreground: #1c1c1f;
+
+  --bg-0: #e2e2e5;
+  --bg-1: #ececef;
+  --bg-2: #f4f4f6;
+  --bg-3: #ffffff;
+  --bg-4: #f7f7f8;
+  --bg-5: #eeeeef;
+  --bg-6: #ffffff;
+  --bg-7: #f0f0f2;
+  --bg-8: #d8d8db;
+  --bg-9: #c4c4c8;
+
+  --text-1: #4a4a52;
+  --text-2: #57575f;
+  --text-3: #6b6b72;
+  --text-4: #7d7d84;
+  --text-5: #8f8f96;
+  --text-6: #9a9aa1;
+  --text-7: #b7b7bd;
+}
+
+/* System preference, only when the user hasn't explicitly chosen a theme */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --color-foreground: #1c1c1f;
+
+    --bg-0: #e2e2e5;
+    --bg-1: #ececef;
+    --bg-2: #f4f4f6;
+    --bg-3: #ffffff;
+    --bg-4: #f7f7f8;
+    --bg-5: #eeeeef;
+    --bg-6: #ffffff;
+    --bg-7: #f0f0f2;
+    --bg-8: #d8d8db;
+    --bg-9: #c4c4c8;
+
+    --text-1: #4a4a52;
+    --text-2: #57575f;
+    --text-3: #6b6b72;
+    --text-4: #7d7d84;
+    --text-5: #8f8f96;
+    --text-6: #9a9aa1;
+    --text-7: #b7b7bd;
+  }
 }
 
 body {
@@ -39,7 +139,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--bg-9);
 }
 
 /* Hide scrollbar for mobile bottom bar */

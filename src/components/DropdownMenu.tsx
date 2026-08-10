@@ -5,6 +5,8 @@ interface MenuItem {
   onClick: () => void;
   shortcut?: string;
   divider?: boolean;
+  disabled?: boolean;
+  badge?: string;
 }
 
 export function DropdownMenu({ title, items }: { title: string; items: MenuItem[] }) {
@@ -35,8 +37,17 @@ export function DropdownMenu({ title, items }: { title: string; items: MenuItem[
           {items.map((item, i) => (
             item.divider ? (
               <div key={i} className="h-px bg-[var(--color-panel-border)] my-1"></div>
+            ) : item.disabled ? (
+              <div
+                key={i}
+                title={item.badge ? `${item.label} — ${item.badge}` : item.label}
+                className="w-full text-left px-4 py-1.5 text-sm text-gray-600 flex justify-between items-center cursor-not-allowed"
+              >
+                <span>{item.label}</span>
+                {item.badge && <span className="text-[9px] uppercase tracking-wide text-gray-600 bg-[var(--bg-8)] rounded px-1.5 py-0.5">{item.badge}</span>}
+              </div>
             ) : (
-              <button 
+              <button
                 key={i}
                 onClick={() => { item.onClick(); setIsOpen(false); }}
                 className="w-full text-left px-4 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-[var(--color-accent)] flex justify-between items-center cursor-pointer"

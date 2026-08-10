@@ -22,6 +22,19 @@ electron.contextBridge.exposeInMainWorld("electronWindow", {
 	minimize: () => electron.ipcRenderer.send("window:minimize"),
 	maximize: () => electron.ipcRenderer.send("window:maximize"),
 	close: () => electron.ipcRenderer.send("window:close"),
-	isMaximized: () => electron.ipcRenderer.invoke("window:isMaximized")
+	isMaximized: () => electron.ipcRenderer.invoke("window:isMaximized"),
+	onBeforeClose: (cb) => {
+		const listener = () => cb();
+		electron.ipcRenderer.on("app:before-close", listener);
+		return listener;
+	},
+	offBeforeClose: (listener) => electron.ipcRenderer.off("app:before-close", listener),
+	confirmClose: () => electron.ipcRenderer.send("app:confirm-close"),
+	onOpenFile: (cb) => {
+		const listener = (_event, payload) => cb(payload);
+		electron.ipcRenderer.on("file:open-path", listener);
+		return listener;
+	},
+	offOpenFile: (listener) => electron.ipcRenderer.off("file:open-path", listener)
 });
 //#endregion
